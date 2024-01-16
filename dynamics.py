@@ -2,6 +2,9 @@ import torch
 import numpy as np
 import pybullet as p
 import articulate as art
+import sys
+import os
+sys.path.append(os.getcwd()+"\\pyrbdl-0.0.2-py3.9-win-amd64.egg")
 from articulate.utils.bullet import *
 from articulate.utils.rbdl import *
 from utils import *

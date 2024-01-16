@@ -86,6 +86,7 @@ if __name__ == '__main__':
     server_for_unity = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_for_unity.bind(('127.0.0.1', 8888))
     server_for_unity.listen(1)
+
     print('Server start. Waiting for unity3d to connect.')
     if paths.unity_file != '' and os.path.exists(paths.unity_file):
         win32api.ShellExecute(0, 'open', os.path.abspath(paths.unity_file), '', '', 1)
