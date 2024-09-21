@@ -27,7 +27,7 @@ class paths:
     live_record_dir = 'data/record'                 # output directory for live recordings
 
     smpl_file = 'models/SMPL_male.pkl'              # official SMPL model path
-    physics_model_file = 'models/physics.urdf'      # physics body model path
+    physics_model_file = 'models/physics.new.urdf'      # physics body model path
     plane_file = 'models/plane.urdf'                # (for debug) path to plane.urdf    Please put plane.obj next to it.
     weights_file = 'data/weights.pt'                # network weight file
     physics_parameter_file = 'physics_parameters.json'   # physics hyperparameters

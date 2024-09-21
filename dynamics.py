@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import pybullet as p
+from pygame.time import Clock
+
 import articulate as art
 import sys
 import os
@@ -10,6 +12,7 @@ from articulate.utils.rbdl import *
 from utils import *
 from qpsolvers import solve_qp
 from config import paths
+from scipy.spatial.transform import  Rotation
 
 
 class PhysicsOptimizer:
@@ -24,6 +27,7 @@ class PhysicsOptimizer:
         self.debug = debug
         self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
         self.params = read_debug_param_values_from_json(paths.physics_parameter_file)
+
         self.friction_constraint_matrix = np.array([[np.sqrt(2), -mu, 0],
                                                     [-np.sqrt(2), -mu, 0],
                                                     [0, -mu, np.sqrt(2)],
@@ -56,9 +60,10 @@ class PhysicsOptimizer:
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
-        a_ref = acc.numpy()
         q = self.q
         qdot = self.qdot
+        self.params['floor_y'] = -0.8086
+
 
         if q is None:
             self.q = q_ref
@@ -130,6 +135,7 @@ class PhysicsOptimizer:
                 cur_vel = self.model.calc_point_velocity(q, qdot, joint_id)
                 a_des = self.params['kp_linear'] * v * self.params['delta_t'] - self.params['kd_linear'] * cur_vel
                 A = self.model.calc_point_Jacobian(q, joint_id)
+                bc = self.model.calc_point_acceleration(q, qdot, np.zeros(75), joint_id)
                 b = -self.model.calc_point_acceleration(q, qdot, np.zeros(75), joint_id) + a_des
                 As1.append(A * self.params['coeff_jvel'])
                 bs1.append(b * self.params['coeff_jvel'])
@@ -266,3 +272,41 @@ class PhysicsOptimizer:
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
             return pose_opt, tran_opt, cj, grf
 
+
+if __name__ == "__main__":
+    op = PhysicsOptimizer(debug=True)
+    pose = [torch.eye(3) for _ in range(24)]
+    #pose[1] = torch.tensor(Rotation.from_euler("xyz",[90,0,0],degrees=True).as_matrix()).view(3,3)
+    #pose[2] = torch.tensor(Rotation.from_euler("xyz",[90,0,0],degrees=True).as_matrix()).view(3,3)
+    pose[4] = torch.tensor(Rotation.from_euler("xyz",[90,0,0],degrees=True).as_matrix()).view(3,3)
+    pose[5] = torch.tensor(Rotation.from_euler("xyz",[90,0,0],degrees=True).as_matrix()).view(3,3)
+
+    op.optimize_frame(torch.stack([torch.eye(3) for _ in range(24)]).view(24, 3, 3), torch.zeros(72).view(24, 3),
+                          torch.tensor([1.0, 1.0]).view(2),None)
+    op.optimize_frame(torch.stack([torch.eye(3) for _ in range(24)]).view(24, 3, 3), torch.zeros(72).view(24, 3),
+                          torch.tensor([1.0, 1.0]).view(2), None)
+
+    hip = op.model.calc_body_position(op.q, vars(Body)["ROOT"])
+    ankle = op.model.calc_body_position(op.q, vars(Body)["LANKLE"])
+    knee = op.model.calc_body_position(op.q, vars(Body)["LKNEE"])
+    foot = op.model.calc_body_position(op.q, vars(Body)["LFOOT"])
+    print(foot,knee)
+
+    op.optimize_frame(torch.stack(pose).view(24, 3, 3), torch.zeros(72).view(24, 3),
+                          torch.tensor([1.0, 1.0]).view(2),None)
+
+    op.optimize_frame(torch.stack(pose).view(24, 3, 3), torch.zeros(72).view(24, 3),
+                          torch.tensor([1.0, 1.0]).view(2), None)
+
+
+    clock = Clock()
+
+    while True:
+        clock.tick(60)
+        hip = op.model.calc_body_position(op.q, vars(Body)["ROOT"])
+        ankle = op.model.calc_body_position(op.q, vars(Body)["LANKLE"])
+        knee = op.model.calc_body_position(op.q, vars(Body)["LKNEE"])
+        foot = op.model.calc_body_position(op.q, vars(Body)["LFOOT"])
+        _,t = op.optimize_frame(torch.stack(pose).view(24, 3, 3), torch.zeros(72).view(24, 3),
+                          torch.tensor([1.0, 1.0]).view(2), None)
+        print(hip)

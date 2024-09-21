@@ -42,9 +42,9 @@ class MeocapVMC_Client:
             self.bone_data[args[1]] = Rotation.from_euler("xyz", euler).as_matrix()
 
     def root_data_handler(self, *args):
-        pass
-        # self.root_rotation = Rotation.from_quat(args[5:9]).as_matrix()
-        # self.root_position = args[2:5]
+        self.root_rotation = Rotation.from_quat(args[5:9]).as_matrix()
+        self.root_position = args[2:5]
+
 
     def on_data_update(self, func):
         self.on_update_func = func

@@ -7,6 +7,8 @@ import numpy as np
 import pybullet as p
 from articulate.math import rotation_matrix_to_euler_angle_np, euler_angle_to_rotation_matrix_np, euler_convert_np, \
     normalize_angle
+import articulate as art
+
 
 
 _smpl_to_rbdl = [0, 1, 2, 9, 10, 11, 18, 19, 20, 27, 28, 29, 3, 4, 5, 12, 13, 14, 21, 22, 23, 30, 31, 32, 6, 7, 8,
@@ -19,6 +21,20 @@ _rbdl_to_bullet = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
                    27, 28, 29, 30, 31, 32, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 33, 34, 35,
                    36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 63, 64, 65, 66, 67, 68]
 smpl_to_rbdl_data = _smpl_to_rbdl
+def normalize_and_concat_11(glb_acc, glb_rot):
+    glb_acc = glb_acc.view(-1, 11, 3)
+    glb_rot = glb_rot.view(-1, 11, 3, 3)
+    root_rot = glb_rot[:, 5:6]
+    root_acc = glb_acc[:, 5:6]
+    root_rot = root_rot.view(-1, 3, 3).view(-1, 1, 3, 3)
+    acc = torch.cat((glb_acc[:, :5] - root_acc, root_acc, glb_acc[:, 6:] - root_acc), dim=1).bmm(
+        root_rot.view(-1, 3, 3))
+    ori = torch.cat(
+        (root_rot.transpose(2, 3).matmul(glb_rot[:, :5]), glb_rot[:, 5:6],
+         root_rot.transpose(2, 3).matmul(glb_rot[:, 6:])),
+        dim=1)
+    data = torch.cat((acc.flatten(1), ori.flatten(1)), dim=1)
+    return data
 
 
 def set_pose(id_robot, q):

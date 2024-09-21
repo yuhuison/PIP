@@ -7,6 +7,8 @@ import numpy as np
 import shutil
 import matplotlib.pyplot as plt
 import articulate as art
+import sys
+sys.path.append(os.getcwd()+"\\pyrbdl-0.0.2-py3.9-win-amd64.egg")
 from articulate.utils.rbdl import *
 from net import PIP
 
@@ -116,7 +118,9 @@ def run_pipeline(net, data_dir, sequence_ids=None):
 
     print('Saving the results at "%s"' % output_dir)
     for i in tqdm.tqdm(sequence_ids):
-        torch.save(net.predict(accs[i], rots[i], init_poses[i]), os.path.join(output_dir, '%d.pt' % i))
+        print(accs[i].shape,rots[i].shape,poses[i].shape)
+        result_i = net.predict(accs[i], rots[i], init_poses[i])
+        torch.save(result_i, os.path.join(output_dir, '%d.pt' % i))
 
 
 def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator=ReducedPoseEvaluator(),
@@ -202,7 +206,7 @@ if __name__ == '__main__':
 
     # Note: to evaluate Absolute Jitter Error, use full_pose_evaluator
     print('\n')
-    evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
+    #evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
     print('\n')
-    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
+    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=False, flush_cache=True)

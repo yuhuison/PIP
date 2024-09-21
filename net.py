@@ -47,6 +47,7 @@ class PIP(torch.nn.Module):
 
         self.load_state_dict(torch.load(paths.weights_file))
         self.eval()
+        print(self.state_dict()["rnn1.rnn.weight_ih_l0"])
 
     def _reduced_glb_6d_to_full_local_mat(self, root_rotation, glb_reduced_pose):
         glb_reduced_pose = art.math.r6d_to_rotation_matrix(glb_reduced_pose).view(-1, joint_set.n_reduced, 3, 3)
@@ -92,12 +93,15 @@ class PIP(torch.nn.Module):
         leaf_joint, full_joint, global_6d_pose, joint_velocity, contact = [_[0] for _ in self.forward([x])]
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot.view(-1, 6, 3, 3)[:, -1], global_6d_pose)
         joint_velocity = joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale
-        pose_opt, tran_opt = [], []
-        for p, v, c, a in zip(pose, joint_velocity, contact, glb_acc):
+        pose_opt, tran_opt = pose.view(-1,24,3,3), torch.zeros(pose.shape[0]*3).view(-1,3).to(pose.device)
+        '''
+            for p, v, c, a in zip(pose, joint_velocity, contact, glb_acc):
             p, t = self.dynamics_optimizer.optimize_frame(p, v, c, a)
             pose_opt.append(p)
             tran_opt.append(t)
         pose_opt, tran_opt = torch.stack(pose_opt), torch.stack(tran_opt)
+        '''
+
         return pose_opt, tran_opt
 
     @torch.no_grad()
